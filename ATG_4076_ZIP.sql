@@ -1,0 +1,10 @@
+CREATE TABLE ATG_4076_ZIP
+(ID IDENTITY,
+Zip CHAR(10),
+City CHAR(25),
+State CHAR(2),
+CityType CHAR(1),
+CityAlias CHAR(25),
+Latitude FLOAT,
+Longitude FLOAT,
+PRIMARY KEY(ID));
