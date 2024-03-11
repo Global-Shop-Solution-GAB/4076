@@ -1,0 +1,249 @@
+Program.Sub.ScreenSU.Start
+gui.F_Import..create
+gui.F_Import..caption("MDB Import")
+gui.F_Import..size(5535,2025)
+gui.F_Import..position(0,0)
+gui.F_Import..event(unload,EndProgram)
+gui.F_Import..alwaysontop(False)
+gui.F_Import..fontname("Arial")
+gui.F_Import..fontsize(8)
+gui.F_Import..forecolor(0)
+gui.F_Import..fontstyle(False,False,False,False,False)
+gui.F_Import..BackColor(-2147483633)
+gui.F_Import..controlbox(True)
+gui.F_Import..maxbutton(True)
+gui.F_Import..minbutton(True)
+gui.F_Import..mousepointer(0)
+gui.F_Import..moveable(True)
+gui.F_Import..sizeable(False)
+gui.F_Import..ShowInTaskBar(True)
+gui.F_Import..titlebar(True)
+gui.F_Import.lblPath.create(label)
+gui.F_Import.lblPath.caption("Import Path")
+gui.F_Import.lblPath.backstyle(0)
+gui.F_Import.lblPath.visible(True)
+gui.F_Import.lblPath.size(1935,255)
+gui.F_Import.lblPath.zorder(0)
+gui.F_Import.lblPath.position(200,200)
+gui.F_Import.lblPath.enabled(True)
+gui.F_Import.lblPath.fontname("Arial")
+gui.F_Import.lblPath.fontsize(8)
+gui.F_Import.lblPath.BackColor(-2147483633)
+gui.F_Import.txtPath.create(textbox)
+gui.F_Import.txtPath.text("")
+gui.F_Import.txtPath.visible(True)
+gui.F_Import.txtPath.size(4290,315)
+gui.F_Import.txtPath.zorder(1)
+gui.F_Import.txtPath.position(200,400)
+gui.F_Import.txtPath.enabled(True)
+gui.F_Import.txtPath.fontname("Arial")
+gui.F_Import.txtPath.fontsize(8)
+gui.F_Import.txtPath.BackColor(-2147483643)
+gui.F_Import.cmdBrowse.create(button)
+gui.F_Import.cmdBrowse.caption("v")
+gui.F_Import.cmdBrowse.visible(True)
+gui.F_Import.cmdBrowse.size(315,270)
+gui.F_Import.cmdBrowse.zorder(0)
+gui.F_Import.cmdBrowse.position(4600,400)
+gui.F_Import.cmdBrowse.enabled(True)
+gui.F_Import.cmdBrowse.fontname("Arial")
+gui.F_Import.cmdBrowse.fontsize(8)
+gui.F_Import.cmdBrowse.event(click,cmdbrowse_click)
+gui.F_Import.cmdImport.create(button)
+gui.F_Import.cmdImport.caption("Import")
+gui.F_Import.cmdImport.visible(True)
+gui.F_Import.cmdImport.size(975,375)
+gui.F_Import.cmdImport.zorder(0)
+gui.F_Import.cmdImport.position(230,920)
+gui.F_Import.cmdImport.enabled(True)
+gui.F_Import.cmdImport.fontname("Arial")
+gui.F_Import.cmdImport.fontsize(8)
+gui.F_Import.cmdImport.event(click,cmdimport_click)
+gui.F_Import.progress1.create(progressbar)
+gui.F_Import.progress1.visible(True)
+gui.F_Import.progress1.size(3735,255)
+gui.F_Import.progress1.zorder(0)
+gui.F_Import.progress1.position(1270,995)
+gui.F_Import.progress1.enabled(True)
+gui.F_Import.lblStatus.create(label)
+gui.F_Import.lblStatus.caption("")
+gui.F_Import.lblStatus.backstyle(0)
+gui.F_Import.lblStatus.visible(True)
+gui.F_Import.lblStatus.size(1935,255)
+gui.F_Import.lblStatus.zorder(0)
+gui.F_Import.lblStatus.position(1300,800)
+gui.F_Import.lblStatus.enabled(True)
+gui.F_Import.lblStatus.fontname("Arial")
+gui.F_Import.lblStatus.fontsize(8)
+gui.F_Import.lblStatus.BackColor(-2147483633)
+
+
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'MA Ford Data Import
+'6/20/08
+'Custom Hook
+'Imports data from an Access database into custom Pervasive tables
+
+Gui.F_Import..Show
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+
+Program.Sub.Main.End
+
+Program.Sub.EndProgram.Start
+F.Intrinsic.Control.If(V.ODBC.con.State,=,1)
+	F.ODBC.Connection!con.Close
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.If(V.ODBC.conAcc.State,=,1)
+	F.ODBC.Connection!conAcc.Close
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.End
+
+
+Program.Sub.EndProgram.End
+
+program.sub.cmdbrowse_click.start
+V.Local.sPath.Declare(String)
+
+V.Local.sPath.Set("")
+F.Intrinsic.UI.ShowOpenFileDialog("","*.mdb","C:\",V.Local.sPath)
+F.Intrinsic.Control.If(V.Local.sPath,<>,"***CANCEL***")
+	Gui.F_Import.txtPath.Text(V.Local.sPath)
+F.Intrinsic.Control.EndIf
+
+program.sub.cmdbrowse_click.end
+
+program.sub.cmdimport_click.start
+V.Local.sSQL.Declare(String)
+V.Local.sTemp.Declare(String)
+V.Local.bIsNull.Declare(Boolean)
+V.Local.iID.Declare(Long)
+
+F.ODBC.Connection!conAcc.OpenMDBConnection(V.Screen.F_Import!txtPath.Text)
+
+Gui.F_Import.progress1.Max(3)
+Gui.F_Import.progress1.Value(0)
+Gui.F_Import.lblStatus.Caption("Importing territories . . .")
+
+'F.Intrinsic.Debug.InvokeDebugger
+
+'zips & territories
+F.ODBC.Connection!con.OpenRecordsetRW("rst","Select * from ATG_4076_ZIP")
+F.ODBC.Connection!conAcc.OpenRecordsetRO("rstA","Select * from ZipCodes order by ZipCode, City, CityAliasName")
+F.Intrinsic.Control.DoUntil(V.ODBC.conAcc!rstA.EOF,=,True)
+	V.Local.sTemp.Set(V.ODBC.conAcc!rstA.FieldVal!ZipCode)
+	F.Intrinsic.Variable.IsNull(V.Local.sTemp,V.Local.bIsNull)
+	F.Intrinsic.Control.If(V.Local.bIsNull,=,False)
+		'F.Intrinsic.Debug.Stop
+		F.ODBC.con!rst.AddNew
+		F.ODBC.con!rst.Set!Zip(V.ODBC.conAcc!rstA.FieldVal!ZipCode)
+		F.Intrinsic.Control.CallSub("FormatData","sData",V.ODBC.conAcc!rstA.FieldVal!City,"iLen",25)
+		F.ODBC.con!rst.Set!City(V.Args.sText)
+		F.Intrinsic.Control.CallSub("FormatData","sData",V.ODBC.conAcc!rstA.FieldVal!State,"iLen",2)
+		F.ODBC.con!rst.Set!State(V.Args.sText)
+		F.Intrinsic.Control.CallSub("FormatData","sData",V.ODBC.conAcc!rstA.FieldVal!CityType,"iLen",1)
+		F.ODBC.con!rst.Set!CityType(V.Args.sText)
+
+		F.Intrinsic.Control.CallSub("FormatData","sData",V.ODBC.conAcc!rstA.FieldVal!CityAliasName,"iLen",25)
+		F.ODBC.con!rst.Set!CityAlias(V.Args.sText)
+		F.Intrinsic.Variable.IsNull(V.ODBC.conAcc!rstA.FieldVal!Latitude,V.Local.bIsNull)
+		F.Intrinsic.Control.If(V.Local.bIsNull,=,False)
+			F.ODBC.con!rst.Set!Latitude(V.ODBC.conAcc!rstA.FieldVal!Latitude)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Variable.IsNull(V.ODBC.conAcc!rstA.FieldVal!Longitude,V.Local.bIsNull)
+		F.Intrinsic.Control.If(V.Local.bIsNull,=,False)
+			F.ODBC.con!rst.Set!Longitude(V.ODBC.conAcc!rstA.FieldVal!Longitude)
+		F.Intrinsic.Control.EndIf
+
+		F.ODBC.con!rst.Update
+
+		F.ODBC.Connection!con.OpenRecordsetRO("rstI","Select Top 1 ID from ATG_4076_ZIP order by ID desc")
+		V.Local.iID.Set(V.ODBC.con!rstI.FieldVal!ID)
+		F.ODBC.con!rstI.Close
+
+		F.Intrinsic.String.Concat("Select * from ATG_4076_SALES_TERR where Zip_ID=",V.local.iID.String,V.Local.sSQL)
+		F.ODBC.Connection!con.OpenRecordsetRW("rstT",V.Local.sSQL)
+		F.Intrinsic.Control.If(V.ODBC.con!rstT.EOF,=,True)
+			F.ODBC.con!rstT.AddNew
+			F.ODBC.con!rstT.Set!Zip_ID(V.Local.iID)
+			F.Intrinsic.Control.If(V.ODBC.conAcc!rstA.FieldVal!RegionCode,<>,"N/A")
+				F.ODBC.con!rstT.Set!Region(V.ODBC.conAcc!rstA.FieldVal!RegionCode)
+			F.Intrinsic.Control.Else
+				F.ODBC.con!rstT.Set!Region(-1)
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstT.Update
+		F.Intrinsic.Control.Endif
+		F.ODBC.con!rstT.Close
+		
+	F.Intrinsic.Control.EndIf
+	F.ODBC.conAcc!rstA.MoveNext
+F.Intrinsic.Control.Loop
+F.ODBC.conAcc!rstA.Close
+F.ODBC.con!rst.Close
+'F.Intrinsic.Debug.Stop
+
+Gui.F_Import.progress1.Value(1)
+Gui.F_Import.lblStatus.Caption("Importing bill to exceptions . . .")
+
+'bill to exceptions
+F.ODBC.Connection!con.OpenRecordsetRW("rst","Select * from ATG_4076_BILLTO_ECPT")
+F.ODBC.Connection!conAcc.OpenRecordsetRO("rstA","Select * from Bill2Exceptions")
+F.Intrinsic.Control.DoUntil(V.ODBC.conAcc!rstA.EOF,=,True)
+	F.ODBC.con!rst.AddNew
+	F.ODBC.con!rst.Set!Cust(V.ODBC.conAcc!rstA.FieldVal!VCID)
+	F.ODBC.con!rst.Set!Override_Region(-1)
+	F.ODBC.con!rst.Set!Active(True)
+	F.ODBC.con!rst.Update
+	F.ODBC.conAcc!rstA.MoveNext
+F.Intrinsic.Control.Loop
+F.ODBC.conAcc!rstA.Close
+F.ODBC.con!rst.Close
+
+Gui.F_Import.progress1.Value(2)
+Gui.F_Import.lblStatus.Caption("Importing ship to exceptions . . .")
+
+'ship to exceptions
+F.ODBC.Connection!con.OpenRecordsetRW("rst","Select * from ATG_4076_SHIPTO_ECPT")
+F.ODBC.Connection!conAcc.OpenRecordsetRO("rstA","Select BillID, ShiptoID, NewShip2RegionCode from ShipToExceptionOverride")
+F.Intrinsic.Control.DoUntil(V.ODBC.conAcc!rstA.EOF,=,True)
+	F.ODBC.con!rst.AddNew
+	F.ODBC.con!rst.Set!Cust(V.ODBC.conAcc!rstA.FieldVal!BillID)
+	F.ODBC.con!rst.Set!ShipTo(V.ODBC.conAcc!rstA.FieldVal!ShipToID)
+	F.Intrinsic.Control.If(V.ODBC.conAcc!rstA.FieldVal!NewShip2RegionCode,<>,"")
+		F.ODBC.con!rst.Set!Override_Region(V.ODBC.conAcc!rstA.FieldVal!NewShip2RegionCode)
+	F.Intrinsic.Control.Else
+		F.ODBC.con!rst.Set!Override_Region(-1)
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rst.Set!Active(True)
+	F.ODBC.con!rst.Update
+	F.ODBC.conAcc!rstA.MoveNext
+F.Intrinsic.Control.Loop
+F.ODBC.conAcc!rstA.Close
+F.ODBC.con!rst.Close
+
+Gui.F_Import.progress1.Value(3)
+Gui.F_Import.lblStatus.Caption("")
+
+F.Intrinsic.Control.CallSub("EndProgram")
+
+program.sub.cmdimport_click.end
+
+Program.Sub.FormatData.Start
+V.Local.sTemp.Declare(String)
+
+F.Intrinsic.Control.If(V.Args.sData,<>,"")
+	F.Intrinsic.String.Left(V.Args.sData,V.Args.iLen,V.Local.sTemp)
+	F.Intrinsic.Variable.AddRV("sText",V.Local.sTemp)
+F.Intrinsic.Control.Else
+	F.Intrinsic.Variable.AddRV("sText","")
+F.Intrinsic.Control.EndIf
+
+Program.Sub.FormatData.End
+
+
