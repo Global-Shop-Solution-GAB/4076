@@ -1,0 +1,66 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Variable.Global.sOrderNo.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'MA Ford Sales Order Creation Audit
+'6/20/08
+'Hook 11872
+'Adds a record to a custom audit table when a new sales order is created.
+
+V.Local.sText.Declare(String)
+V.Local.sPath.Declare(String)
+V.Local.iHdl.Declare(Long)
+
+F.Intrinsic.String.LPad(V.Passed.000003,"0",7,V.Global.sOrderNo)
+
+'Check for new order or copied order.  If neither, end program.
+F.Intrinsic.Control.If(V.Caller.Switches,<>,"N")
+	F.Intrinsic.Control.If(V.Caller.Switches,<>,"C")
+		F.Intrinsic.Control.End
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+F.Intrinsic.Control.CallSub("AddRecord")
+
+F.Intrinsic.Control.CallSub("Endprogram")
+
+Program.Sub.Main.End
+
+Program.Sub.EndProgram.Start
+F.Intrinsic.Control.If(V.ODBC.con.State,=,1)
+	F.ODBC.Connection!con.Close
+F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.End
+
+
+Program.Sub.EndProgram.End
+
+Program.Sub.AddRecord.Start
+V.Local.sSQL.Declare(String)
+
+F.Intrinsic.String.Concat("Select * from ATG_4076_SALES_AUDIT where OrderNo='",V.Global.sOrderNo,"'",V.Local.sSQL)
+F.ODBC.Connection!con.OpenRecordsetRW("rst",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rst.EOF,=,True)
+	F.ODBC.con!rst.AddNew
+	F.ODBC.con!rst.Set!OrderNo(V.Global.sOrderNo)
+	F.ODBC.con!rst.Set!GSUser(V.Caller.User)
+	F.ODBC.con!rst.Set!CreateDate(V.Ambient.Now)
+	F.ODBC.con!rst.Update
+F.Intrinsic.Control.EndIf
+F.ODBC.con!rst.Close
+
+
+Program.Sub.AddRecord.End
+
+Program.Sub.Comments.Start
+${$0$}$MAF_4076_NewSalesAudit$}$SKT$}$5/23/2016
+${$1$}$$}$$}$0$}$11872$}$Post-Save Hook$}$5/23/2016 10:46:42 AM$}$(Program: ORD200; Screen: OES0200A)
+
+Program.Sub.Comments.End
+
