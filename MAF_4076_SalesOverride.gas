@@ -1,0 +1,123 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Variable.Global.sCust.Declare(String)
+Variable.Global.sZip.Declare(String)
+Variable.Global.sShipTo.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'MA Ford Salesperson Override
+'6/20/08
+'Hook 11870
+
+'F.Intrinsic.Debug.InvokeDebugger
+'F.Intrinsic.Debug.Stop
+
+V.Local.iRegion.Declare(Long)
+V.Global.sCust.Set(V.Passed.000006)
+V.Global.sShipTo.Set(V.Passed.000061)
+F.Intrinsic.String.Left(V.Passed.000018,5,V.Global.sZip)
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+F.Intrinsic.Control.CallSub("CheckBillToExceptions")
+F.Intrinsic.Control.If(V.Args.bBReturn,=,False)
+	'F.Intrinsic.Debug.Stop
+	F.Intrinsic.Control.CallSub("CheckShipToExceptions")
+	F.Intrinsic.Control.If(V.Args.bSReturn,=,False)
+		'F.Intrinsic.Debug.Stop
+		F.Intrinsic.Control.CallSub("GetRegion")
+		V.Local.iRegion.Set(V.Args.iNRegion)
+	F.Intrinsic.Control.Else
+		V.Local.iRegion.Set(V.Args.iSRegion)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Else
+	V.Local.iRegion.Set(V.Args.iBRegion)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.Local.iRegion,<>,-1)
+	'F.Intrinsic.Debug.Stop
+	F.Intrinsic.Control.CallSub("Override","iRegion",V.Local.iRegion)
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!con.Close
+
+Program.Sub.Main.End
+
+Program.Sub.CheckBillToExceptions.Start
+V.Local.sSQL.Declare(String)
+
+F.Intrinsic.String.Concat("Select Override_Region from ATG_4076_BILLTO_ECPT where Cust='",V.Global.sCust,"' and Active=1",V.Local.sSQL)
+F.ODBC.Connection!con.OpenRecordsetRO("rst",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rst.EOF,=,True)
+	F.Intrinsic.Variable.AddRV("bBReturn",False)
+F.Intrinsic.Control.Else
+	F.Intrinsic.Variable.AddRV("iBRegion",V.ODBC.con!rst.FieldVal!Override_Region)
+	F.Intrinsic.Variable.AddRV("bBReturn",True)
+F.Intrinsic.Control.EndIf
+F.ODBC.con!rst.Close
+
+Program.Sub.CheckBillToExceptions.End
+
+Program.Sub.CheckShipToExceptions.Start
+V.Local.sSQL.Declare(String)
+
+F.Intrinsic.String.Concat("Select Override_Region from ATG_4076_SHIPTO_ECPT where Cust='",V.Global.sCust,"' and ShipTo='",V.Global.sShipTo,"' and Active=1",V.Local.sSQL)
+F.ODBC.Connection!con.OpenRecordsetRO("rst",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rst.EOF,=,True)
+	F.Intrinsic.Variable.AddRV("bSReturn",False)
+F.Intrinsic.Control.Else
+	F.Intrinsic.Variable.AddRV("iSRegion",V.ODBC.con!rst.FieldVal!Override_Region)
+	F.Intrinsic.Variable.AddRV("bSReturn",True)
+F.Intrinsic.Control.EndIf
+F.ODBC.con!rst.Close
+
+Program.Sub.CheckShipToExceptions.End
+
+Program.Sub.Override.Start
+V.Local.sSQL.Declare(String)
+V.Local.sRegion.Declare(String)
+
+F.Intrinsic.String.Format(V.Args.iregion,"00",V.Local.sRegion)
+
+F.Intrinsic.String.Concat("Select Salesperson from Salespeople where Salesperson_Code='",V.local.sRegion,"' and Ass_Sys='AR' and Ass_Sub_Sys='SLM'",V.Local.sSQL)
+F.ODBC.Connection!con.OpenRecordsetRO("rstS",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rstS.EOF,=,False)
+	V.Passed.000030.Set(V.ODBC.con!rstS.FieldVal!Salesperson)
+F.Intrinsic.Control.EndIf
+F.ODBC.con!rstS.Close
+
+
+
+Program.Sub.Override.End
+
+Program.Sub.GetRegion.Start
+V.Local.sSQL.Declare(String)
+
+F.Intrinsic.String.Concat("Select Top 1 ID from ATG_4076_ZIP where Zip='",V.Global.sZip,"'",V.Local.sSQL)
+F.ODBC.Connection!con.OpenRecordsetRO("rst",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rst.EOF,=,True)
+	F.Intrinsic.Variable.AddRV("iNRegion",-1)
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Concat("Select Region from ATG_4076_SALES_TERR where Zip_ID=",V.ODBC.con!rst.FieldVal!ID,V.Local.sSQL)
+	F.ODBC.Connection!con.OpenRecordsetRO("rstS",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.con!rstS.EOF,=,True)
+		F.Intrinsic.Variable.AddRV("iNRegion",-1)
+	F.Intrinsic.Control.else
+		F.Intrinsic.Variable.AddRV("iNRegion",V.ODBC.con!rstS.FieldVal!Region)
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rstS.Close
+F.Intrinsic.Control.EndIf
+F.ODBC.con!rst.Close
+
+Program.Sub.GetRegion.End
+
+Program.Sub.Comments.Start
+${$0$}$MAF_4076_SalesOverride$}$SKT$}$5/23/2016
+${$1$}$$}$$}$0$}$11870$}$Pre-Save Hook$}$5/23/2016 10:49:24 AM$}$(Program: ORD200; Screen: OES0200A)
+
+Program.Sub.Comments.End
+
