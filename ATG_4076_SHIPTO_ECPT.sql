@@ -1,0 +1,6 @@
+CREATE TABLE ATG_4076_SHIPTO_ECPT
+(Cust CHAR(6),
+ShipTo CHAR(6),
+Override_Region INTEGER,
+Active BIT,
+PRIMARY KEY(Cust,ShipTo));
